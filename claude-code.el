@@ -123,9 +123,9 @@ This controls how the return key and its modifiers behave in Claude buffers:
 `\"S\"' is the shift key.
 `\"s\"' is the hyper key, which is the COMMAND key on macOS."
   :type '(choice (const :tag "Newline on shift-return (s-return for newline, RET to send)" newline-on-shift-return)
-                 (const :tag "Newline on alt-return (M-return for newline, RET to send)" newline-on-alt-return)
-                 (const :tag "Shift-return to send (RET for newline, S-return to send)" shift-return-to-send)
-                 (const :tag "Super-return to send (RET for newline, s-return to send)" super-return-to-send))
+          (const :tag "Newline on alt-return (M-return for newline, RET to send)" newline-on-alt-return)
+          (const :tag "Shift-return to send (RET for newline, S-return to send)" shift-return-to-send)
+          (const :tag "Super-return to send (RET for newline, s-return to send)" super-return-to-send))
   :group 'claude-code)
 
 (defcustom claude-code-enable-notifications t
@@ -188,7 +188,7 @@ resizing."
   "Terminal backend to use for Claude Code.
 Choose between \\='eat (default) and \\='vterm terminal emulators."
   :type '(radio (const :tag "Eat terminal emulator" eat)
-                (const :tag "Vterm terminal emulator" vterm))
+          (const :tag "Vterm terminal emulator" vterm))
   :group 'claude-code)
 
 (defcustom claude-code-no-delete-other-windows nil
@@ -761,18 +761,18 @@ SWITCHES are optional command-line arguments for PROGRAM."
     (inheritenv
      ;; Use the current environment (even if buffer-local) when starting vterm in the new buffer
      (with-current-buffer buffer
-        ;; vterm needs to have an open window before starting the claude
-        ;; process; otherwise Claude doesn't seem to know how wide its
-        ;; terminal window is and it draws the input box too wide. But
-        ;; the user may not want to pop to the buffer. For some reason
-        ;; `display-buffer' also leads to wonky results, it has to be
-        ;; `pop-to-buffer'. So, show the buffer, start vterm-mode (which
-        ;; starts the vterm-shell claude process), and then hide the
-        ;; buffer. We'll optionally re-open it later.
-        (pop-to-buffer buffer)
-        (vterm-mode)
-        (delete-window (get-buffer-window buffer))
-        buffer))))
+       ;; vterm needs to have an open window before starting the claude
+       ;; process; otherwise Claude doesn't seem to know how wide its
+       ;; terminal window is and it draws the input box too wide. But
+       ;; the user may not want to pop to the buffer. For some reason
+       ;; `display-buffer' also leads to wonky results, it has to be
+       ;; `pop-to-buffer'. So, show the buffer, start vterm-mode (which
+       ;; starts the vterm-shell claude process), and then hide the
+       ;; buffer. We'll optionally re-open it later.
+       (pop-to-buffer buffer)
+       (vterm-mode)
+       (delete-window (get-buffer-window buffer))
+       buffer))))
 
 ;; Helper to ensure vterm is loaded
 (defun claude-code--ensure-vterm ()
@@ -1561,9 +1561,9 @@ ARGS can contain additional arguments passed from the CLI."
 
     ;; Run the event hook and potentially get a JSON response
     (let* ((message (list :type type
-                         :buffer-name buffer-name
-                         :json-data json-data
-                         :args (append args extra-args)))
+                          :buffer-name buffer-name
+                          :json-data json-data
+                          :args (append args extra-args)))
            (hook-response (run-hook-with-args-until-success 'claude-code-event-hook message)))
 
       ;; Return hook response if any, otherwise nil
@@ -1815,25 +1815,32 @@ uses consult with live buffer preview.  Otherwise falls back to
         (consult--read candidates
                        :prompt prompt
                        :require-match t
+                       :sort nil  ; preserve caller's ordering in case "+ New" is provided.
                        :state (claude-code--buffer-preview-state choices-alist)
                        :category 'buffer)
       (completing-read prompt candidates nil t))))
 
 ;;;###autoload
-(defun claude-code-here ()
+(defun claude-code-here (&optional arg)
   "Switch current window to a Claude buffer, with option to create new.
 
-Prompts for a Claude buffer to switch to.  The selection includes all
-running Claude instances plus an option to create a new instance.
-Unlike `claude-code-toggle', this replaces the current window's buffer
-rather than displaying in a separate window.
+Prompts for a Claude buffer to switch to.  The selection includes
+Claude instances for the current project plus an option to create a new
+instance.  Unlike `claude-code-toggle', this replaces the current
+window's buffer rather than displaying in a separate window.
+
+With prefix ARG, show all Claude instances across all directories
+instead of just the current project.
 
 When `claude-code-use-consult-preview' is non-nil and consult is
 installed, provides live buffer preview while navigating."
-  (interactive)
-  (let* ((all-buffers (claude-code--find-all-claude-buffers))
-         (choices (claude-code--buffers-to-choices all-buffers))
-         (choices-with-new (cons '("+ New Claude instance" . :new) choices))
+  (interactive "P")
+  (let* ((current-dir (claude-code--directory))
+         (buffers (if arg
+                      (claude-code--find-all-claude-buffers)
+                    (claude-code--find-claude-buffers-for-directory current-dir)))
+         (choices (claude-code--buffers-to-choices buffers))
+         (choices-with-new (append choices '(("+ New Claude instance" . :new))))
          (selection (claude-code--read-buffer-selection "Claude: " choices-with-new)))
     (when selection
       (let ((selected (cdr (assoc selection choices-with-new))))
