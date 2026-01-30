@@ -795,7 +795,8 @@ STRING is the text to send to the terminal."
 
 _BACKEND is the terminal backend type (should be \\='vterm).
 BUFFER is the terminal buffer containing the process to kill."
-  (kill-process (get-buffer-process buffer)))
+  (kill-process (get-buffer-process buffer))
+  (kill-buffer buffer))
 
 ;; Mode operations
 (cl-defmethod claude-code--term-read-only-mode ((_backend (eql vterm)))
