@@ -1785,15 +1785,21 @@ If the Claude buffer doesn't exist, create it."
 CHOICES-ALIST is an alist mapping display names to buffer objects.
 Returns a function suitable for consult's :state parameter that
 shows buffer contents as the user navigates through candidates."
-  (let ((orig-buf (current-buffer)))
+  (let ((orig-buf (current-buffer))
+        (orig-window (selected-window)))
     (lambda (action cand)
-      (when (eq action 'preview)
-        (let ((buf (and cand (cdr (assoc cand choices-alist)))))
-          (cond
-           ((and buf (bufferp buf) (buffer-live-p buf))
-            (switch-to-buffer buf 'norecord))
-           ((buffer-live-p orig-buf)
-            (switch-to-buffer orig-buf 'norecord))))))))
+      (pcase action
+        ('preview
+         (let ((buf (and cand (cdr (assoc cand choices-alist)))))
+           (cond
+            ((and buf (bufferp buf) (buffer-live-p buf))
+             (switch-to-buffer buf 'norecord))
+            ((buffer-live-p orig-buf)
+             (switch-to-buffer orig-buf 'norecord)))))
+        ('exit
+         (when (and (window-live-p orig-window)
+                    (buffer-live-p orig-buf))
+           (set-window-buffer orig-window orig-buf)))))))
 
 (defun claude-code--read-buffer-selection (prompt choices-alist)
   "Read a buffer selection using PROMPT from CHOICES-ALIST.
